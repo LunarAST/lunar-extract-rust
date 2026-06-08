@@ -1,6 +1,15 @@
 [package]
 name = "lunar-extract-rust"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+description = "LunarAST adapter for Rust (Axum framework)"
+
+[[bin]]
+name = "lunar-extract-rust"
+path = "src/main.rs"
 
 [dependencies]
+syn = { version = "2.0", features = ["full", "extra-traits"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
