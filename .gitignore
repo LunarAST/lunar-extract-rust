@@ -1,0 +1,21 @@
+# Rust build artifacts
+target/
+Cargo.lock
+
+# Project runtime dir & temp files
+.lunar/*.log
+.lunar/*.tmp
+.lunar/cache/
+*.log
+*.tmp
+
+# IDE & editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# System files
+.DS_Store
+Thumbs.db
