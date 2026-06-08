@@ -45,10 +45,10 @@ fn parse_path_segments(path: &str) -> Vec<RouteSegment> {
                 raw_constraint: None,
             });
         } else if part.starts_with('{') && part.ends_with('}') {
-            let inner = &part[1..part.len() - 1];
+            let inner = &part[1..part.len()-1];
             if let Some(colon_pos) = inner.find(':') {
                 let name = inner[..colon_pos].to_string();
-                let constraint = inner[colon_pos + 1..].to_string();
+                let constraint = inner[colon_pos+1..].to_string();
                 segments.push(RouteSegment {
                     segment_type: "parameter".to_string(),
                     value: None,
@@ -110,7 +110,7 @@ fn extract_routes_from_expr(expr: &syn::Expr, file_path: &Path, routes: &mut Vec
             if method_call.method == "route" {
                 if let Some((path, method)) = extract_route_args(&method_call.args) {
                     let segments = parse_path_segments(&path);
-                    let line = 0; // span line number unavailable in current proc_macro2 version
+                    let line = method_call.method.span().start().line as usize;
                     routes.push(RouteEntry {
                         method,
                         segments,
@@ -157,9 +157,7 @@ fn extract_route_args(
         _ => return None,
     };
     match method.as_str() {
-        "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS" => {
-            Some((path, method))
-        }
+        "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS" => Some((path, method)),
         _ => None,
     }
 }
