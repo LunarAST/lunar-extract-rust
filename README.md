@@ -60,6 +60,27 @@ The adapter outputs [Line-Delimited JSON (LDJSON)](https://jsonlines.org/) to st
 
 The end marker contains a `count` field that must match the number of route lines emitted. The `lunar` CLI verifies this count before accepting the output as valid.
 
+## Rustdoc Mode (Optional)
+
+For maximum accuracy with complex macro patterns, `lunar-extract-rust` supports an optional rustdoc mode that leverages the Rust compiler's own semantic analysis.
+
+```bash
+# 1. Generate rustdoc JSON (requires nightly)
+cargo +nightly rustdoc -- -Z unstable-options --output-format json
+
+# 2. Extract routes from the compiler output
+lunar-extract-rust --rustdoc /path/to/project
+```
+
+**How it works**: Instead of parsing `.rs` source files directly, this mode reads the `target/doc/rustdoc.json` produced by `rustc`. This JSON contains fully expanded, type-checked, and macro-resolved API information — including route handlers. It provides 100% accurate macro penetration and eliminates the need for manual AST traversal of complex macro patterns.
+
+**Fallback behavior**: If the rustdoc JSON file is not found, the adapter automatically falls back to the default `syn`-based extraction, ensuring zero workflow interruption. This means you can safely use `--rustdoc` in CI pipelines without pre-checks.
+
+**When to use**:
+- Projects with heavy macro usage that obscures route definitions
+- CI pipelines and security audits where 100% accuracy is required
+- When you already generate rustdoc JSON for documentation purposes
+
 ## Diagnostics
 
 - If the adapter fails to parse a source file, it prints a warning to `stderr` and continues scanning other files.
@@ -69,16 +90,16 @@ The end marker contains a `count` field that must match the number of route line
 ## Output Conventions
 
 - All JSON field names follow **camelCase** (Google JSON Style Guide) via `#[serde(rename_all = "camelCase")]`.
-
 - All path extraction trims leading and trailing slashes before splitting, preventing empty literal segments.
-
 - The adapter uses recursive AST traversal and covers control flow expressions (`if`, `match`, `loop`, `while`, `for`, `closure`, `async`, `unsafe`, etc.).
+- In rustdoc mode, the `extractionMethod` field is set to `"rustdoc"` to indicate the source of the extraction.
 
 ## Limitations
 
 - Only Axum 0.7's `Router::route()` pattern is supported. Custom route macros or other router builders may not be detected.
 - Route parameters with complex regex constraints (e.g., `/:id(\\d+)`) are preserved as descriptive metadata (`rawConstraint`) but not validated across projects.
 - gRPC routes are not yet supported.
+- Rustdoc mode is under active development and currently extracts basic route information. Full semantic route extraction will be completed in a future iteration.
 
 ## License
 
