@@ -66,6 +66,14 @@ The end marker contains a `count` field that must match the number of route line
 - If no routes are found, it still outputs a valid end marker with `count: 0`.
 - On unrecoverable errors (e.g., invalid project path), it outputs `{"_lunar":{"status":"error","message":"..."}}` and exits with a non-zero exit code.
 
+## Output Conventions
+
+- All JSON field names follow **camelCase** (Google JSON Style Guide) via `#[serde(rename_all = "camelCase")]`.
+
+- All path extraction trims leading and trailing slashes before splitting, preventing empty literal segments.
+
+- The adapter uses recursive AST traversal and covers control flow expressions (`if`, `match`, `loop`, `while`, `for`, `closure`, `async`, `unsafe`, etc.).
+
 ## Limitations
 
 - Only Axum 0.7's `Router::route()` pattern is supported. Custom route macros or other router builders may not be detected.
