@@ -2,6 +2,8 @@ use serde::Serialize;
 use std::fs;
 use std::path::Path;
 
+mod extract_doc;
+
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct RouteSegment {
@@ -112,7 +114,6 @@ fn extract_from_expr(expr: &syn::Expr, file_path: &Path, routes: &mut Vec<RouteE
                 extract_from_expr(arg, file_path, routes);
             }
         }
-        // 全覆盖所有控制流和容器表达式
         syn::Expr::If(expr_if) => {
             extract_from_expr(&expr_if.cond, file_path, routes);
             for stmt in &expr_if.then_branch.stmts { extract_from_stmt(stmt, file_path, routes); }
@@ -239,10 +240,39 @@ fn scan_dir(dir: &Path, routes: &mut Vec<RouteEntry>) -> anyhow::Result<()> {
 
 pub fn run() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() < 2 { anyhow::bail!("Usage: lunar-extract-rust <project_directory>"); }
-    let project_dir = Path::new(&args[1]);
-    let routes = scan_project(project_dir)?;
-    for route in &routes { println!("{}", serde_json::to_string(route)?); }
+    let mut use_rustdoc = false;
+    let mut project_dir: Option<&str> = None;
+
+    for arg in &args[1..] {
+        if arg == "--rustdoc" {
+            use_rustdoc = true;
+        } else {
+            project_dir = Some(arg);
+        }
+    }
+
+    let project_dir = project_dir.ok_or_else(|| anyhow::anyhow!("Usage: lunar-extract-rust [--rustdoc] <project_directory>"))?;
+    let dir = Path::new(project_dir);
+
+    let routes = if use_rustdoc {
+        // Rustdoc mode: look for rustdoc JSON output in target/doc/
+        let doc_path = dir.join("target").join("doc").join("rustdoc.json");
+        if doc_path.exists() {
+            extract_doc::extract_from_rustdoc(&doc_path)?
+        } else {
+            eprintln!("  [!] rustdoc JSON not found at {}", doc_path.display());
+            eprintln!("  [!] Generate it first:");
+            eprintln!("  [!]   cargo +nightly rustdoc -- -Z unstable-options --output-format json");
+            eprintln!("  [!] Falling back to syn-based extraction...");
+            scan_project(dir)?
+        }
+    } else {
+        scan_project(dir)?
+    };
+
+    for route in &routes {
+        println!("{}", serde_json::to_string(route)?);
+    }
     let marker = serde_json::json!({"_lunar": {"status": "success", "count": routes.len()}});
     println!("{}", serde_json::to_string(&marker)?);
     Ok(())
